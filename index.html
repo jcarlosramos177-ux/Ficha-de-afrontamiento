@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Afrontamiento Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --azul-pro: #0f172a;
+            --plomo-bg: #f8fafc;
+            --plomo-borde: #e2e8f0;
+            --verde-exito: #10b981;
+            --blanco: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--plomo-bg);
+            padding: 15px;
+            color: var(--azul-pro);
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: var(--blanco);
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 2.5fr repeat(7, 1fr) 1.5fr;
+            gap: 8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .header-labels {
+            font-weight: 700;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #64748b;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--plomo-bg);
+        }
+
+        .row {
+            display: contents; /* Mantiene la alineación con el grid padre */
+        }
+
+        .criterio-txt {
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 10px 0;
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--plomo-borde);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: var(--azul-pro);
+            border-color: var(--azul-pro);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z'/%3E%3C/svg%3E");
+            background-size: 80%;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .progress-box {
+            background: #f1f5f9;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--verde-exito);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-pdf { background: var(--azul-pro); color: white; }
+        .btn-reset { background: #fee2e2; color: #ef4444; }
+
+        @media (max-width: 500px) {
+            .grid-container { grid-template-columns: 2fr repeat(7, 0.8fr) 1fr; gap: 4px; }
+            .criterio-txt { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h2 style="margin:0">Registro de Afrontamiento</h2>
+        <p style="font-size: 0.85rem; color: #64748b;">Monitoreo Semanal de Objetivos</p>
+    </header>
+
+    <div class="grid-container">
+        <div class="header-labels">Criterio</div>
+        <div class="header-labels">L</div><div class="header-labels">M</div>
+        <div class="header-labels">M</div><div class="header-labels">J</div>
+        <div class="header-labels">V</div><div class="header-labels">S</div>
+        <div class="header-labels">D</div>
+        <div class="header-labels">Progreso</div>
+
+        <div id="main-board" style="display: contents;"></div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-pdf" onclick="downloadPDF()">Descargar Reporte PDF</button>
+        <button class="btn btn-reset" onclick="resetAll()">Limpiar Semana</button>
+    </div>
+</div>
+
+<script>
+    const criterios = [
+        "Autorregulación", "Uso de Pictogramas", "Tolerancia a Ruidos", 
+        "Contacto Visual", "Transición de Tareas", "Petición de Ayuda"
+    ];
+
+    const board = document.getElementById('main-board');
+
+    // Inicializar la tabla
+    criterios.forEach((crit, rIdx) => {
+        let rowHtml = `<div class="criterio-txt">${crit}</div>`;
+        for(let d=0; d<7; d++) {
+            rowHtml += `<input type="checkbox" id="c-${rIdx}-${d}" onclick="calc(${rIdx})">`;
+        }
+        rowHtml += `<div class="progress-box"><div id="bar-${rIdx}" class="progress-bar"></div></div>`;
+        board.innerHTML += rowHtml;
+    });
+
+    function calc(rIdx) {
+        let count = 0;
+        for(let d=0; d<7; d++) {
+            if(document.getElementById(`c-${rIdx}-${d}`).checked) count++;
+        }
+        document.getElementById(`bar-${rIdx}`).style.width = (count/7*100) + '%';
+    }
+
+    async function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Reporte de Afrontamiento Semanal", 20, 20);
+        doc.setFontSize(12);
+        let y = 40;
+        criterios.forEach((crit, rIdx) => {
+            let count = 0;
+            for(let d=0; d<7; d++) if(document.getElementById(`c-${rIdx}-${d}`).checked) count++;
+            doc.text(`${crit}: ${count} de 7 días logrados (${Math.round(count/7*100)}%)`, 20, y);
+            y += 10;
+        });
+        doc.save("reporte-autismo.pdf");
+    }
+
+    function resetAll() {
+        if(confirm("¿Seguro que quieres borrar los datos de la semana?")) {
+            document.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            document.querySelectorAll('.progress-bar').forEach(b => b.style.width = '0%');
+        }
+    }
+</script>
+
+</body>
+</html>
